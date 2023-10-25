@@ -23,3 +23,9 @@ for i in range(num_times):
 
 print("Appended Array: ", appended_list)
 print("shape of array : ", len(appended_list))
+
+for i, j in enumerate(appended_list):
+    print("i = ", i)
+    print("gt_pose: ")
+    print("x = ", j[0, 3])
+    print("y = ", j[2, 3])

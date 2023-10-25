@@ -16,7 +16,11 @@ def _load_poses(filepath):
 
 data_dir = "KITTI_sequence_2"
 gt_poses = _load_poses(os.path.join(data_dir,"poses.txt"))
+print(gt_poses)
+print("shape of gt_poses = ", len(gt_poses))
 
 for i, gt_pose in enumerate(gt_poses):
     print("i = ", i)
-    print("shape of gt_poses = ", len(gt_poses))
+    print("gt_pose: ")
+    print("x = ", gt_pose[0, 3])
+    print("y = ", gt_pose[2, 3])

@@ -187,20 +187,23 @@ def main():
     estimated_path = []
 
     identity_array = np.identity(4)
-    cur_pose = []
+    cur_poses = []
 
     for i in range(len(images)):
-        cur_pose.append(identity_array)
+        cur_poses.append(identity_array)
 
-    for i in range(len(images)):
-        q1, q2 = vo.get_matches(i)
-        transf = vo.get_pose(q1, q2)
-        cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
-        print("cur_pose = ", cur_pose)
+    for i, cur_pose in enumerate(cur_poses):
+        if i == 0:
+            cur_pose = cur_pose
+        else:
+            q1, q2 = vo.get_matches(i)
+            transf = vo.get_pose(q1, q2)
+            cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
+            #print("cur_pose = ", cur_pose)
         # gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
         estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-        print("x = ", cur_pose[0, 3])
-        print("y = ", cur_pose[2, 3])
+        # print("x = ", cur_pose[0, 3])
+        # print("y = ", cur_pose[2, 3])
 
     plotting.visualize_paths(estimated_path, estimated_path, "Visual Odometry", file_out=os.path.basename(data_dir) + ".html")
 

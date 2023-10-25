@@ -11,13 +11,15 @@ from tqdm import tqdm
 class VisualOdometry():
     def __init__(self, data_dir):
         self.K, self.P = self._load_calib(os.path.join(data_dir, 'calib.txt'))
-        self.gt_poses = self._load_poses(os.path.join(data_dir,"poses.txt"))
-        self.images = self._load_images(os.path.join(data_dir,"image_l"))
+        self.gt_poses = self._load_poses(os.path.join(data_dir, "poses.txt"))
+        self.images = self._load_images(os.path.join(data_dir, "image_l"))
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
-        index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
+        index_params = dict(algorithm=FLANN_INDEX_LSH,
+                            table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
-        self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
+        self.flann = cv2.FlannBasedMatcher(
+            indexParams=index_params, searchParams=search_params)
 
     @staticmethod
     def _load_calib(filepath):
@@ -73,7 +75,8 @@ class VisualOdometry():
         -------
         images (list): grayscale images
         """
-        image_paths = [os.path.join(filepath, file) for file in sorted(os.listdir(filepath))]
+        image_paths = [os.path.join(filepath, file)
+                       for file in sorted(os.listdir(filepath))]
         return [cv2.imread(path, cv2.IMREAD_GRAYSCALE) for path in image_paths]
 
     @staticmethod
@@ -123,12 +126,13 @@ class VisualOdometry():
         except ValueError:
             pass
 
-        draw_params = dict(matchColor = -1, # draw matches in green color
-                 singlePointColor = None,
-                 matchesMask = None, # draw only inliers
-                 flags = 2)
+        draw_params = dict(matchColor=-1,  # draw matches in green color
+                           singlePointColor=None,
+                           matchesMask=None,  # draw only inliers
+                           flags=2)
 
-        img3 = cv2.drawMatches(self.images[i], kp1, self.images[i-1],kp2, good ,None,**draw_params)
+        img3 = cv2.drawMatches(
+            self.images[i], kp1, self.images[i-1], kp2, good, None, **draw_params)
         cv2.imshow("image", img3)
         cv2.waitKey(200)
 
@@ -178,7 +182,8 @@ class VisualOdometry():
             # Get the transformation matrix
             T = self._form_transf(R, t)
             # Make the projection matrix
-            P = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
+            P = np.matmul(np.concatenate(
+                (self.K, np.zeros((3, 1))), axis=1), T)
 
             # Triangulate the 3D points
             hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
@@ -194,7 +199,7 @@ class VisualOdometry():
             sum_of_pos_z_Q2 = sum(uhom_Q2[2, :] > 0)
 
             # Form point pairs and calculate the relative scale
-            relative_scale = np.mean(np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)/
+            relative_scale = np.mean(np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1) /
                                      np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1))
             return sum_of_pos_z_Q1 + sum_of_pos_z_Q2, relative_scale
 
@@ -254,14 +259,15 @@ def main():
             print("cur_pose: ")
             print("x = ", cur_pose[0, 3])
             print("y = ", cur_pose[2, 3])
-        
+
         gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
         print("gt_path = ", gt_path)
 
         estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
         print("estimated_path = ", estimated_path)
 
-    plotting.visualize_paths(gt_path, estimated_path, "Visual Odometry", file_out=os.path.basename(data_dir) + ".html")
+    plotting.visualize_paths(gt_path, estimated_path, "Visual Odometry",
+                             file_out=os.path.basename(data_dir) + ".html")
 
 
 if __name__ == "__main__":
