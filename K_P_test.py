@@ -13,10 +13,10 @@ def load_calib(filepath):
 
 data_dir = "KITTI_sequence_2"
 
-# K, P = load_calib(os.path.join(data_dir, 'calib.txt'))
+K, P = load_calib(os.path.join(data_dir, 'calib.txt'))
 
-P = np.array([[92, 0, 160, 0], [0, 92, 120, 0], [0, 0, 1, 0]])
-K = np.array([[92, 0, 160], [0, 92, 120], [0, 0, 1]])
+#P = np.array([[92, 0, 160, 0], [0, 92, 120, 0], [0, 0, 1, 0]])
+#K = np.array([[92, 0, 160], [0, 92, 120], [0, 0, 1]])
 
 print("K = ", K)
 print("P = ", P)

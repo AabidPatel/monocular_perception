@@ -12,7 +12,7 @@ class VisualOdometry():
     def __init__(self, data_dir):
         self.K, self.P = self._load_calib()
         # self.gt_poses = self._load_poses(os.path.join(data_dir,"poses.txt"))
-        self.images = self._load_images(os.path.join(data_dir,"images"))
+        self.images = self._load_images(os.path.join(data_dir,"images_2"))
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
         index_params = dict(algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1)
@@ -32,36 +32,12 @@ class VisualOdometry():
 
     @staticmethod
     def _form_transf(R, t):
-        """
-        Makes a transformation matrix from the given rotation matrix and translation vector
-
-        Parameters
-        ----------
-        R (ndarray): The rotation matrix
-        t (list): The translation vector
-
-        Returns
-        -------
-        T (ndarray): The transformation matrix
-        """
         T = np.eye(4, dtype=np.float64)
         T[:3, :3] = R
         T[:3, 3] = t
         return T
 
     def get_matches(self, i):
-        """
-        This function detect and compute keypoints and descriptors from the i-1'th and i'th image using the class orb object
-
-        Parameters
-        ----------
-        i (int): The current frame
-
-        Returns
-        -------
-        q1 (ndarray): The good keypoints matches position in i-1'th image
-        q2 (ndarray): The good keypoints matches position in i'th image
-        """
         # Find the keypoints and descriptors with ORB
         kp1, des1 = self.orb.detectAndCompute(self.images[i - 1], None)
         kp2, des2 = self.orb.detectAndCompute(self.images[i], None)
@@ -92,18 +68,6 @@ class VisualOdometry():
         return q1, q2
 
     def get_pose(self, q1, q2):
-        """
-        Calculates the transformation matrix
-
-        Parameters
-        ----------
-        q1 (ndarray): The good keypoints matches position in i-1'th image
-        q2 (ndarray): The good keypoints matches position in i'th image
-
-        Returns
-        -------
-        transformation_matrix (ndarray): The transformation matrix
-        """
         # Essential matrix
         E, _ = cv2.findEssentialMat(q1, q2, self.K, threshold=1)
 
@@ -115,19 +79,7 @@ class VisualOdometry():
         return transformation_matrix
 
     def decomp_essential_mat(self, E, q1, q2):
-        """
-        Decompose the Essential matrix
 
-        Parameters
-        ----------
-        E (ndarray): Essential matrix
-        q1 (ndarray): The good keypoints matches position in i-1'th image
-        q2 (ndarray): The good keypoints matches position in i'th image
-
-        Returns
-        -------
-        right_pair (list): Contains the rotation matrix and translation vector
-        """
         def sum_z_cal_relative_scale(R, t):
             # Get the transformation matrix
             T = self._form_transf(R, t)
@@ -136,9 +88,9 @@ class VisualOdometry():
 
             # Triangulate the 3D points
             hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
+            
             # Also seen from cam 2
             hom_Q2 = np.matmul(T, hom_Q1)
-
             # Un-homogenize
             uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
             uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
@@ -148,8 +100,17 @@ class VisualOdometry():
             sum_of_pos_z_Q2 = sum(uhom_Q2[2, :] > 0)
 
             # Form point pairs and calculate the relative scale
-            relative_scale = np.mean(np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)/
-                                     np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1))
+            a = np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)
+            b = np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1)
+            
+            relative_scale = np.mean(a/b)
+            """
+            if np.isnan(relative_scale):
+                relative_scale = 0.999999999
+            elif np.isinf(relative_scale):
+                relative_scale = 0.999999999
+            """
+
             return sum_of_pos_z_Q1 + sum_of_pos_z_Q2, relative_scale
 
         # Decompose the essential matrix
@@ -171,6 +132,7 @@ class VisualOdometry():
         right_pair_idx = np.argmax(z_sums)
         right_pair = pairs[right_pair_idx]
         relative_scale = relative_scales[right_pair_idx]
+        print("relative_scale = ", relative_scale)
         R1, t = right_pair
         t = t * relative_scale
 
@@ -181,7 +143,7 @@ def main():
     data_dir = "KITTI_sequence_2"  # Try KITTI_sequence_2 too
     vo = VisualOdometry(data_dir)
 
-    play_trip(vo.images)  # Comment out to not play the trip
+    # play_trip(vo.images)  # Comment out to not play the trip
     images = vo.images
     gt_path = []
     estimated_path = []
@@ -202,8 +164,8 @@ def main():
             #print("cur_pose = ", cur_pose)
         # gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
         estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-        # print("x = ", cur_pose[0, 3])
-        # print("y = ", cur_pose[2, 3])
+        print("x = ", cur_pose[0, 3])
+        print("y = ", cur_pose[2, 3])
 
     plotting.visualize_paths(estimated_path, estimated_path, "Visual Odometry", file_out=os.path.basename(data_dir) + ".html")
 

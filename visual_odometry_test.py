@@ -163,7 +163,34 @@ class VisualOdometry():
         # Get transformation matrix
         transformation_matrix = self._form_transf(R, np.squeeze(t))
         return transformation_matrix
+    
+    def sum_z_cal_relative_scale(self, R, t, q1, q2):
+            # Get the transformation matrix
+        T = self._form_transf(R, t)
+            # Make the projection matrix
+        P = np.matmul(np.concatenate(
+            (self.K, np.zeros((3, 1))), axis=1), T)
 
+            # Triangulate the 3D points
+        hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
+            # Also seen from cam 2
+        hom_Q2 = np.matmul(T, hom_Q1)
+
+            # Un-homogenize
+        uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
+        uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
+
+            # Find the number of points there has positive z coordinate in both cameras
+        sum_of_pos_z_Q1 = sum(uhom_Q1[2, :] > 0)
+        sum_of_pos_z_Q2 = sum(uhom_Q2[2, :] > 0)
+
+        # Form point pairs and calculate the relative scale
+        relative_scale = np.mean(np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1) /
+                                     np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1))
+        
+        return sum_of_pos_z_Q1 + sum_of_pos_z_Q2, relative_scale
+    
+    
     def decomp_essential_mat(self, E, q1, q2):
         """
         Decompose the Essential matrix
@@ -178,30 +205,6 @@ class VisualOdometry():
         -------
         right_pair (list): Contains the rotation matrix and translation vector
         """
-        def sum_z_cal_relative_scale(R, t):
-            # Get the transformation matrix
-            T = self._form_transf(R, t)
-            # Make the projection matrix
-            P = np.matmul(np.concatenate(
-                (self.K, np.zeros((3, 1))), axis=1), T)
-
-            # Triangulate the 3D points
-            hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
-            # Also seen from cam 2
-            hom_Q2 = np.matmul(T, hom_Q1)
-
-            # Un-homogenize
-            uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
-            uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
-
-            # Find the number of points there has positive z coordinate in both cameras
-            sum_of_pos_z_Q1 = sum(uhom_Q1[2, :] > 0)
-            sum_of_pos_z_Q2 = sum(uhom_Q2[2, :] > 0)
-
-            # Form point pairs and calculate the relative scale
-            relative_scale = np.mean(np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1) /
-                                     np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1))
-            return sum_of_pos_z_Q1 + sum_of_pos_z_Q2, relative_scale
 
         # Decompose the essential matrix
         R1, R2, t = cv2.decomposeEssentialMat(E)
@@ -214,7 +217,7 @@ class VisualOdometry():
         z_sums = []
         relative_scales = []
         for R, t in pairs:
-            z_sum, scale = sum_z_cal_relative_scale(R, t)
+            z_sum, scale = self.sum_z_cal_relative_scale(R, t, q1, q2)
             z_sums.append(z_sum)
             relative_scales.append(scale)
 
@@ -222,6 +225,7 @@ class VisualOdometry():
         right_pair_idx = np.argmax(z_sums)
         right_pair = pairs[right_pair_idx]
         relative_scale = relative_scales[right_pair_idx]
+        print("scale = ", relative_scale)
         R1, t = right_pair
         t = t * relative_scale
 
@@ -241,30 +245,16 @@ def main():
     for i, gt_pose in enumerate(tqdm(vo.gt_poses, unit="pose")):
         if i == 0:
             cur_pose = gt_pose
-            print("gt_pose: ")
-            print("x = ", gt_pose[0, 3])
-            print("y = ", gt_pose[2, 3])
-            print(" ")
-            print("cur_pose: ")
-            print("x = ", cur_pose[0, 3])
-            print("y = ", cur_pose[2, 3])
         else:
             q1, q2 = vo.get_matches(i)
             transf = vo.get_pose(q1, q2)
             cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
-            print("gt_pose: ")
-            print("x = ", gt_pose[0, 3])
-            print("y = ", gt_pose[2, 3])
-            print(" ")
-            print("cur_pose: ")
-            print("x = ", cur_pose[0, 3])
-            print("y = ", cur_pose[2, 3])
 
         gt_path.append((gt_pose[0, 3], gt_pose[2, 3]))
-        print("gt_path = ", gt_path)
+        #print("gt_path = ", gt_path)
 
         estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
-        print("estimated_path = ", estimated_path)
+        #print("estimated_path = ", estimated_path)
 
     plotting.visualize_paths(gt_path, estimated_path, "Visual Odometry",
                              file_out=os.path.basename(data_dir) + ".html")
