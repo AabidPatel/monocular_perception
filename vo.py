@@ -2,22 +2,24 @@ import os
 import numpy as np
 import cv2
 from lib.visualization import plotting
-from lib.visualization.video import play_trip
-from tqdm import tqdm
+
+i = 0
 
 
-class VisualOdometry():
+class VisualOdometry:
     def __init__(self, data_dir):
         self.K, self.P = self._load_calib()
         # self.gt_poses = self._load_poses(os.path.join(data_dir, "poses.txt"))
-        self.images = self._load_images(os.path.join(data_dir, "images_3"))
+        self.images = self._load_images(os.path.join(data_dir, "images_2"))
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
-        index_params = dict(algorithm=FLANN_INDEX_LSH,
-                            table_number=6, key_size=12, multi_probe_level=1)
+        index_params = dict(
+            algorithm=FLANN_INDEX_LSH, table_number=6, key_size=12, multi_probe_level=1
+        )
         search_params = dict(checks=50)
         self.flann = cv2.FlannBasedMatcher(
-            indexParams=index_params, searchParams=search_params)
+            indexParams=index_params, searchParams=search_params
+        )
 
     @staticmethod
     def _load_calib():
@@ -27,11 +29,10 @@ class VisualOdometry():
 
     @staticmethod
     def _load_poses(filepath):
-
         poses = []
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             for line in f.readlines():
-                T = np.fromstring(line, dtype=np.float64, sep=' ')
+                T = np.fromstring(line, dtype=np.float64, sep=" ")
                 T = T.reshape(3, 4)
                 T = np.vstack((T, [0, 0, 0, 1]))
                 poses.append(T)
@@ -39,18 +40,21 @@ class VisualOdometry():
 
     @staticmethod
     def _load_images(filepath):
-
-        image_paths = [os.path.join(filepath, file)
-                       for file in sorted(os.listdir(filepath), key=lambda x: int(x.split('.')[0]))]
+        image_paths = [
+            os.path.join(filepath, file)
+            for file in sorted(os.listdir(filepath), key=lambda x: int(x.split(".")[0]))
+        ]
         return [cv2.imread(path, cv2.IMREAD_GRAYSCALE) for path in image_paths]
 
     @staticmethod
     def _form_transf(R, t):
-
         T = np.eye(4, dtype=np.float64)
         T[:3, :3] = R
         T[:3, 3] = t
         return T
+
+    def get_target_match():
+        pass
 
     def get_matches(self, i):
         # Find the keypoints and descriptors with ORB
@@ -67,29 +71,17 @@ class VisualOdometry():
                     good.append(m)
         except ValueError:
             pass
-        """
 
-        sift = cv2.SIFT_create()
-        kp1, des1 = sift.detectAndCompute(self.images[i - 1], None)
-        kp2, des2 = sift.detectAndCompute(self.images[i], None)
-
-        # Implement a robust feature matching technique (e.g., RANSAC)
-        bf = cv2.BFMatcher()
-        matches = bf.knnMatch(des1, des2, k=2)
-
-        good = []
-        for m, n in matches:
-            if m.distance < 0.4 * n.distance:  # Adjust the threshold as needed
-                good.append(m)
-        """
-
-        draw_params = dict(matchColor=-1,  # draw matches in green color
-                           singlePointColor=None,
-                           matchesMask=None,  # draw only inliers
-                           flags=2)
+        draw_params = dict(
+            matchColor=-1,  # draw matches in green color
+            singlePointColor=None,
+            matchesMask=None,  # draw only inliers
+            flags=2,
+        )
 
         img3 = cv2.drawMatches(
-            self.images[i], kp1, self.images[i-1], kp2, good, None, **draw_params)
+            self.images[i], kp1, self.images[i - 1], kp2, good, None, **draw_params
+        )
         cv2.imshow("image", img3)
         cv2.waitKey(200)
 
@@ -113,10 +105,10 @@ class VisualOdometry():
         # Get the transformation matrix
         T = self._form_transf(R, t)
         # Make the projection matrix
-        P = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
 
+        P2 = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
         # Triangulate the 3D points
-        hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
+        hom_Q1 = cv2.triangulatePoints(self.P, P2, q1.T, q2.T)
         # Also seen from cam 2
         hom_Q2 = np.matmul(T, hom_Q1)
 
@@ -124,46 +116,56 @@ class VisualOdometry():
         uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
         uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
 
-        # Find the number of points there has positive z coordinate in both cameras
-        sum_of_pos_z_Q1 = sum(uhom_Q1[2, :] > 0)
-        sum_of_pos_z_Q2 = sum(uhom_Q2[2, :] > 0)
+        # Form point pairs and calculate the relative scale
+        a = np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)
+        b = np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1)
+
+        relative_scale = np.mean(a / b)
+
+        if np.isnan(relative_scale):
+            relative_scale = 1
+        elif np.isinf(relative_scale):
+            relative_scale = 1
+
+        return relative_scale
+
+    def decomp_essential_mat(self, E, q1, q2):
+        global j
+        # Decompose the essential matrix
+        # R1, R2, t = cv2.decomposeEssentialMat(E)
+
+        _, R, t, _ = cv2.recoverPose(E, q1, q2, self.K)
+
+        t = np.squeeze(t)
+
+        T = self._form_transf(R, t)
+        # Make the projection matrix
+
+        P2 = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
+        # Triangulate the 3D points
+        hom_Q1 = cv2.triangulatePoints(self.P, P2, q1.T, q2.T)
+        # Also seen from cam 2
+        hom_Q2 = np.matmul(T, hom_Q1)
+
+        # Un-homogenize
+        uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
+        uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
 
         # Form point pairs and calculate the relative scale
         a = np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)
         b = np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1)
-        relative_scale = np.mean(a/b)
+
+        relative_scale = np.mean(a / b)
 
         if np.isnan(relative_scale):
             relative_scale = 0.999999999
         elif np.isinf(relative_scale):
             relative_scale = 0.999999999
 
-        return sum_of_pos_z_Q1 + sum_of_pos_z_Q2, relative_scale
-
-    def decomp_essential_mat(self, E, q1, q2):
-        # Decompose the essential matrix
-        R1, R2, t = cv2.decomposeEssentialMat(E)
-        t = np.squeeze(t)
-
-        # Make a list of the different possible pairs
-        pairs = [[R1, t], [R1, -t], [R2, t], [R2, -t]]
-
-        # Check which solution there is the right one
-        z_sums = []
-        relative_scales = []
-        for R, t in pairs:
-            z_sum, scale = self.sum_z_cal_relative_scale(R, t, q1, q2)
-            z_sums.append(z_sum)
-            relative_scales.append(scale)
-
-        # Select the pair there has the most points with positive z coordinate
-        right_pair_idx = np.argmax(z_sums)
-        right_pair = pairs[right_pair_idx]
-        relative_scale = relative_scales[right_pair_idx]
-        R1, t = right_pair
+        relative_scale = self.sum_z_cal_relative_scale(R, t, q1, q2)
         t = t * relative_scale
 
-        return [R1, t]
+        return [R, t]
 
 
 def main():
@@ -191,8 +193,12 @@ def main():
         estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
     print("estimated_path = ", estimated_path)
 
-    plotting.visualize_paths(estimated_path, estimated_path, "Visual Odometry",
-                             file_out=os.path.basename(data_dir) + ".html")
+    plotting.visualize_paths(
+        estimated_path,
+        estimated_path,
+        "Visual Odometry",
+        file_out=os.path.basename(data_dir) + ".html",
+    )
 
 
 if __name__ == "__main__":

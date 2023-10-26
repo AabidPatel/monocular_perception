@@ -3,6 +3,8 @@ import pygame
 import cv2
 import os
 import datetime
+import time
+
 i = 0
 
 
@@ -27,10 +29,11 @@ class KeyboardPlayerPyGame(Player):
             pygame.K_UP: Action.FORWARD,
             pygame.K_DOWN: Action.BACKWARD,
             pygame.K_SPACE: Action.CHECKIN,
-            pygame.K_ESCAPE: Action.QUIT
+            pygame.K_ESCAPE: Action.QUIT,
         }
 
     def act(self):
+        global key_events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -45,6 +48,7 @@ class KeyboardPlayerPyGame(Player):
             if event.type == pygame.KEYUP:
                 if event.key in self.keymap:
                     self.last_act ^= self.keymap[event.key]
+
         return self.last_act
 
     def show_target_images(self):
@@ -59,10 +63,8 @@ class KeyboardPlayerPyGame(Player):
 
         color = (0, 0, 0)
 
-        concat_img = cv2.line(concat_img, (int(h/2), 0),
-                              (int(h/2), w), color, 2)
-        concat_img = cv2.line(concat_img, (0, int(w/2)),
-                              (h, int(w/2)), color, 2)
+        concat_img = cv2.line(concat_img, (int(h / 2), 0), (int(h / 2), w), color, 2)
+        concat_img = cv2.line(concat_img, (0, int(w / 2)), (h, int(w / 2)), color, 2)
 
         w_offset = 25
         h_offset = 10
@@ -71,16 +73,48 @@ class KeyboardPlayerPyGame(Player):
         size = 0.75
         stroke = 1
 
-        cv2.putText(concat_img, 'Front View', (h_offset, w_offset),
-                    font, size, color, stroke, line)
-        cv2.putText(concat_img, 'Right View', (int(h/2) + h_offset,
-                                               w_offset), font, size, color, stroke, line)
-        cv2.putText(concat_img, 'Back View', (h_offset, int(
-            w/2) + w_offset), font, size, color, stroke, line)
-        cv2.putText(concat_img, 'Left View', (int(h/2) + h_offset,
-                                              int(w/2) + w_offset), font, size, color, stroke, line)
+        cv2.putText(
+            concat_img,
+            "Front View",
+            (h_offset, w_offset),
+            font,
+            size,
+            color,
+            stroke,
+            line,
+        )
+        cv2.putText(
+            concat_img,
+            "Right View",
+            (int(h / 2) + h_offset, w_offset),
+            font,
+            size,
+            color,
+            stroke,
+            line,
+        )
+        cv2.putText(
+            concat_img,
+            "Back View",
+            (h_offset, int(w / 2) + w_offset),
+            font,
+            size,
+            color,
+            stroke,
+            line,
+        )
+        cv2.putText(
+            concat_img,
+            "Left View",
+            (int(h / 2) + h_offset, int(w / 2) + w_offset),
+            font,
+            size,
+            color,
+            stroke,
+            line,
+        )
 
-        cv2.imshow(f'KeyboardPlayer:target_images', concat_img)
+        cv2.imshow(f"KeyboardPlayer:target_images", concat_img)
         cv2.waitKey(1)
 
     def set_target_images(self, images):
@@ -114,8 +148,7 @@ class KeyboardPlayerPyGame(Player):
             opencv_image = opencv_image[:, :, ::-1]  # BGR->RGB
             # (height,width,Number of colors) -> (width, height)
             shape = opencv_image.shape[1::-1]
-            pygame_image = pygame.image.frombuffer(
-                opencv_image.tobytes(), shape, 'RGB')
+            pygame_image = pygame.image.frombuffer(opencv_image.tobytes(), shape, "RGB")
 
             return pygame_image
 
@@ -134,4 +167,5 @@ class KeyboardPlayerPyGame(Player):
 
 if __name__ == "__main__":
     import vis_nav_game
+
     vis_nav_game.play(the_player=KeyboardPlayerPyGame())
