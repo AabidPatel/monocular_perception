@@ -51,7 +51,7 @@ class KeyboardPlayerPyGame(Player):
             if event.type == pygame.KEYDOWN:
                 if keyboard.is_pressed("r"):
                     capturing = not capturing
-                    print("r is pressed")
+                    # print("r is pressed")
                 if event.key in self.keymap:
                     self.last_act |= self.keymap[event.key]
                 else:

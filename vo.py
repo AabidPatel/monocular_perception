@@ -5,12 +5,109 @@ from lib.visualization import plotting
 
 i = 0
 
+gt_list = [
+    [0, []],
+    [1, []],
+    [2, []],
+    [3, []],
+    [4, []],
+    [5, []],
+    [6, ["F"]],
+    [7, ["F"]],
+    [8, ["F"]],
+    [9, ["F"]],
+    [10, ["F"]],
+    [11, ["F"]],
+    [12, ["F"]],
+    [13, ["F"]],
+    [14, ["F"]],
+    [15, ["F"]],
+    [16, ["F"]],
+    [17, ["F"]],
+    [18, ["F"]],
+    [19, ["F"]],
+    [20, ["F"]],
+    [21, ["F"]],
+    [22, ["F"]],
+    [23, ["F"]],
+    [24, ["F"]],
+    [25, ["F"]],
+    [26, ["F"]],
+    [27, ["F"]],
+    [28, ["F"]],
+    [29, ["F"]],
+    [30, ["F"]],
+    [31, ["F"]],
+    [32, ["F"]],
+    [33, ["F"]],
+    [34, ["F"]],
+    [35, ["F"]],
+    [36, ["F"]],
+    [37, ["F"]],
+    [38, ["F"]],
+    [39, ["F"]],
+    [40, ["F"]],
+    [41, ["F"]],
+    [42, ["F"]],
+    [43, ["F"]],
+    [44, ["F"]],
+    [45, ["F"]],
+    [46, ["F"]],
+    [47, ["F"]],
+    [48, ["F"]],
+    [49, ["F"]],
+    [50, ["F"]],
+    [51, ["F"]],
+    [52, ["F"]],
+    [53, ["F"]],
+    [54, ["F"]],
+    [55, ["F"]],
+    [56, ["F"]],
+    [57, ["F"]],
+    [58, ["F"]],
+    [59, ["F"]],
+    [60, ["F"]],
+    [61, ["F"]],
+    [62, ["F"]],
+    [63, ["F"]],
+    [64, ["F"]],
+    [65, ["F"]],
+    [66, ["F"]],
+    [67, ["F"]],
+    [68, ["F"]],
+    [69, ["F"]],
+    [70, ["F"]],
+    [71, ["F"]],
+    [72, ["F"]],
+    [73, ["F"]],
+    [74, ["F"]],
+    [75, ["F"]],
+    [76, ["F"]],
+    [77, ["F"]],
+    [78, ["F"]],
+    [79, ["F"]],
+    [80, ["F"]],
+    [81, ["F"]],
+    [82, ["F"]],
+    [83, ["F"]],
+    [84, ["F"]],
+    [85, ["F"]],
+    [86, ["F"]],
+    [87, ["F"]],
+    [88, ["F"]],
+    [89, ["F"]],
+    [90, ["F"]],
+    [91, []],
+    [92, []],
+    [93, []],
+]
+
 
 class VisualOdometry:
     def __init__(self, data_dir):
         self.K, self.P = self._load_calib()
         # self.gt_poses = self._load_poses(os.path.join(data_dir, "poses.txt"))
-        self.images = self._load_images(os.path.join(data_dir, "images_4"))
+        self.images = self._load_images(os.path.join(data_dir, "images_5"))
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
         index_params = dict(
@@ -99,7 +196,37 @@ class VisualOdometry:
 
         # Get transformation matrix
         transformation_matrix = self._form_transf(R, np.squeeze(t))
+
         return transformation_matrix
+
+    def error_correction(self, pose, prev_x, prev_y, j):
+        global gt
+
+        est_x = pose[0, 3]
+        est_y = pose[2, 3]
+
+        Id = gt_list[j - 1][0]
+        if len(gt_list[j - 1][1]) == 0:
+            gt = "S"
+        else:
+            gt = gt_list[j - 1][1][0]
+
+        if gt == "S":
+            if est_x > prev_x or est_x < prev_x:
+                est_x = prev_x
+            if est_y > prev_y or est_y < prev_y:
+                est_y = prev_y
+
+        elif gt == "F":
+            if est_x > prev_x:
+                est_x = prev_x
+            if est_y < prev_y:
+                est_y += est_y + (prev_y - est_y)
+
+        pose[0, 3] = est_x
+        pose[2, 3] = est_y
+
+        return pose
 
     def sum_z_cal_relative_scale(self, R, t, q1, q2):
         # Get the transformation matrix
@@ -130,7 +257,6 @@ class VisualOdometry:
         return relative_scale
 
     def decomp_essential_mat(self, E, q1, q2):
-        global j
         # Decompose the essential matrix
         # R1, R2, t = cv2.decomposeEssentialMat(E)
 
@@ -138,32 +264,9 @@ class VisualOdometry:
 
         t = np.squeeze(t)
 
-        T = self._form_transf(R, t)
-        # Make the projection matrix
-
-        P2 = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
-        # Triangulate the 3D points
-        hom_Q1 = cv2.triangulatePoints(self.P, P2, q1.T, q2.T)
-        # Also seen from cam 2
-        hom_Q2 = np.matmul(T, hom_Q1)
-
-        # Un-homogenize
-        uhom_Q1 = hom_Q1[:3, :] / hom_Q1[3, :]
-        uhom_Q2 = hom_Q2[:3, :] / hom_Q2[3, :]
-
-        # Form point pairs and calculate the relative scale
-        a = np.linalg.norm(uhom_Q1.T[:-1] - uhom_Q1.T[1:], axis=-1)
-        b = np.linalg.norm(uhom_Q2.T[:-1] - uhom_Q2.T[1:], axis=-1)
-
-        relative_scale = np.mean(a / b)
-
-        if np.isnan(relative_scale):
-            relative_scale = 0.999999999
-        elif np.isinf(relative_scale):
-            relative_scale = 0.999999999
-
-        relative_scale = self.sum_z_cal_relative_scale(R, t, q1, q2)
-        t = t * relative_scale
+        # relative_scale = self.sum_z_cal_relative_scale(R, t, q1, q2)
+        # t = t * relative_scale
+        print("R = ", R)
 
         return [R, t]
 
@@ -188,9 +291,19 @@ def main():
         else:
             q1, q2 = vo.get_matches(i)
             transf = vo.get_pose(q1, q2)
-            cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
+            print("trans = ", transf)
+            print("inv_trans = ", np.linalg.inv(transf))
+            estimated_cur_pose = np.matmul(cur_pose, np.linalg.inv(transf))
+            cur_pose = vo.error_correction(estimated_cur_pose, x, y, i)
 
-        estimated_path.append((cur_pose[0, 3], cur_pose[2, 3]))
+        print("cur_pose = ", cur_pose)
+        x = cur_pose[0, 3]
+        y = cur_pose[2, 3]
+
+        print("x = ", x)
+        print("y = ", y)
+
+        estimated_path.append((x, y))
     print("estimated_path = ", estimated_path)
 
     plotting.visualize_paths(
