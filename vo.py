@@ -10,7 +10,7 @@ class VisualOdometry:
     def __init__(self, data_dir):
         self.K, self.P = self._load_calib()
         # self.gt_poses = self._load_poses(os.path.join(data_dir, "poses.txt"))
-        self.images = self._load_images(os.path.join(data_dir, "images_2"))
+        self.images = self._load_images(os.path.join(data_dir, "images_4"))
         self.orb = cv2.ORB_create(3000)
         FLANN_INDEX_LSH = 6
         index_params = dict(
