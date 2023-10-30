@@ -168,8 +168,7 @@ class VisualOdometry():
             # Get the transformation matrix
         T = self._form_transf(R, t)
             # Make the projection matrix
-        P = np.matmul(np.concatenate(
-            (self.K, np.zeros((3, 1))), axis=1), T)
+        P = np.matmul(np.concatenate((self.K, np.zeros((3, 1))), axis=1), T)
 
             # Triangulate the 3D points
         hom_Q1 = cv2.triangulatePoints(self.P, P, q1.T, q2.T)
