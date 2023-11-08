@@ -66,46 +66,10 @@ class KeyboardPlayerPyGame(Player):
         size = 0.75
         stroke = 1
 
-        cv2.putText(
-            concat_img,
-            "Front View",
-            (h_offset, w_offset),
-            font,
-            size,
-            color,
-            stroke,
-            line,
-        )
-        cv2.putText(
-            concat_img,
-            "Right View",
-            (int(h / 2) + h_offset, w_offset),
-            font,
-            size,
-            color,
-            stroke,
-            line,
-        )
-        cv2.putText(
-            concat_img,
-            "Back View",
-            (h_offset, int(w / 2) + w_offset),
-            font,
-            size,
-            color,
-            stroke,
-            line,
-        )
-        cv2.putText(
-            concat_img,
-            "Left View",
-            (int(h / 2) + h_offset, int(w / 2) + w_offset),
-            font,
-            size,
-            color,
-            stroke,
-            line,
-        )
+        cv2.putText(concat_img,"Front View",(h_offset, w_offset),font,size,color,stroke,line,)
+        cv2.putText(concat_img,"Right View",(int(h / 2) + h_offset, w_offset),font,size,color,stroke,line,)
+        cv2.putText(concat_img,"Back View",(h_offset, int(w / 2) + w_offset),font,size,color,stroke,line,)
+        cv2.putText(concat_img,"Left View",(int(h / 2) + h_offset, int(w / 2) + w_offset),font,size,color,stroke,line,)
 
         cv2.imshow(f"KeyboardPlayer:target_images", concat_img)
         cv2.waitKey(1)
@@ -146,10 +110,9 @@ class KeyboardPlayerPyGame(Player):
         self.screen.blit(rgb, (0, 0))
         pygame.display.update()
 
-        K = self.get_k()
+        #K = self.get_k()
 
 
 if __name__ == "__main__":
     import vis_nav_game
-
     vis_nav_game.play(the_player=KeyboardPlayerPyGame())
