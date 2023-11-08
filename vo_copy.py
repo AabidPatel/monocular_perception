@@ -151,7 +151,7 @@ class VisualOdometry:
             if est_y > prev_y or est_y < prev_y:
                 est_y = prev_y
             
-            corrected_r = R
+            corrected_r = est_r
 
         elif gt == "L":
             corrected_r = est_r
@@ -219,21 +219,16 @@ def main():
     cur_poses = []
 
     identity_array = np.identity(4)
-    for i in range(len(images)):
-        cur_poses.append(identity_array)
 
     for i, init_pose in enumerate(cur_poses):
         if i == 0:
-            cur_pose = init_pose
+            cur_pose = identity_array
             prev_trans = cur_pose
         else:
             q1, q2 = vo.get_matches(i)
             trans = vo.get_pose(q1, q2)
-            print("prev_trans = ", prev_trans)
             transf = vo.error_correction(trans, prev_trans, i)
-            print("trans = ", transf)
             inv_transf = np.linalg.inv(transf)
-            print("inv_trans = ", inv_transf)
             #print("C = ", cur_pose[0:3, 3])
             #print("I = ", inv_transf[0:3, 3])
             if (cur_pose[0:3, 3] != transf[0:3, 3]).all():

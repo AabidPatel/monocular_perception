@@ -187,12 +187,12 @@ class KeyboardPlayerPyGame(Player):
     def get_path(self, target_ID):
         target_path = []
         for idx in range(target_ID+1):
-            """
             if(len(key_events[idx][1]) == 0):
-                target_path.append('0')
+                # target_path.append('0')
+                #print("NO key")
+                continue
             else:
-            """
-            target_path.append(key_events[idx][1][0])
+                target_path.append(key_events[idx][1][0])
             if idx == target_ID:
                 target_path.append('1')
 

@@ -235,10 +235,10 @@ def main():
     data_dir = "KITTI_sequence_2"  # Try KITTI_sequence_2 too
     vo = VisualOdometry(data_dir)
 
-    play_trip(vo.images)  # Comment out to not play the trip
-    p_test = vo.gt_poses
+    # play_trip(vo.images)  # Comment out to not play the trip
+    #p_test = vo.gt_poses
 
-    print(p_test)
+    #print(p_test)
     gt_path = []
     estimated_path = []
     for i, gt_pose in enumerate(tqdm(vo.gt_poses, unit="pose")):
