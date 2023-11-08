@@ -174,7 +174,7 @@ class KeyboardPlayerPyGame(Player):
                         target_match[j].append([frameID_des[k][0], count])
                         prev_count = count
 
-        print("target_match = ", target_match)
+        # print("target_match = ", target_match)
 
         for k in range(len(target_match)):
             t.append(target_match[k][0][1])
@@ -200,8 +200,8 @@ class KeyboardPlayerPyGame(Player):
 
 
     def nav(self, c, target_path):
-        print(c)
-        print(target_path[c])
+        # print(c)
+        # print(target_path[c])
         if target_path[c] == '0':
             self.last_act = Action.IDLE
         elif(target_path[c] == 'F'):
@@ -215,7 +215,7 @@ class KeyboardPlayerPyGame(Player):
         elif(counter == len(target_path)-1):
             self.last_act = Action.IDLE
             #self.last_act = Action.QUIT          
-            print("IDLE")
+            # print("IDLE")
 
 
     def see(self, fpv):
@@ -254,7 +254,7 @@ class KeyboardPlayerPyGame(Player):
         s = self.get_state()
         
         if(s is not None):
-            print("phase = ", s[1].value)
+            # print("phase = ", s[1].value)
 
             if(s[1].value == 1):
                 if capturing:
@@ -267,7 +267,7 @@ class KeyboardPlayerPyGame(Player):
                     target_loc = self.get_target_location(target_images)
                     print("matches =", target_loc)
                     cv2.imshow("fpv1", key_events[target_loc][2])
-                    cv2.waitKey(20000) & 0xFF
+                    cv2.waitKey(1000) & 0xFF
                     navigating = True
                 elif navigating:
                     path = self.get_path(target_loc)
@@ -280,5 +280,5 @@ class KeyboardPlayerPyGame(Player):
 if __name__ == "__main__":
     import vis_nav_game
     vis_nav_game.play(the_player=KeyboardPlayerPyGame())
-    cv2.imshow("fpv", key_events[target_loc][2])
-    cv2.waitKey(20000) & 0xFF
+    # cv2.imshow("fpv", key_events[target_loc][2])
+    # cv2.waitKey(20000) & 0xFF
